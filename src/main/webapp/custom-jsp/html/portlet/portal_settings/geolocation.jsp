@@ -16,7 +16,7 @@ String geolocationAudienceEnabled = PrefsPropsUtil.getString(company.getCompanyI
 	<aui:input helpMessage="enabled-location-help" label="geolocation-enabled" name='<%= "settings--" + "geolocation.enabled" + "--" %>' type="checkbox" value="<%= geolocationEnabled %>" />
 
 	
-	<aui:select label="how-do-users-authenticate" name='<%= "settings--" + "geolocation.store.type" + "--" %>'>
+	<aui:select label="how-do-users-geolocalizate" name='<%= "settings--" + "geolocation.store.type" + "--" %>'>
 		<aui:option label="store-session" selected='<%= geolocationStoreLocation.equals("session") %>' value="session" />
 		<aui:option label="store-user" selected='<%= geolocationStoreLocation.equals("user-store") %>' value="user-store" />
 	</aui:select>

@@ -120,13 +120,14 @@ var mapitMap2 = new Liferay.GeolocationMap({
 			
 			aLat.ancestor().hide();
 			aLon.ancestor().hide();
-			
 			Liferay.once(
 				'formNavigator:reveal<portlet:namespace />customFields',
 				function() {
 					var mapItMap = Liferay.GeolocationMap.get('<%= themeDisplay.getPortletDisplay().getId() %>');
 		    		var map  = mapItMap.getOl();
-					map.updateSize();
+		    		var timeoutId = setTimeout(function(){
+			    		map.updateSize();
+		    		},2000);
 				}
 			);
 			
@@ -193,8 +194,6 @@ function savePositions(){
 				);
 			aLon.val(lonlatObject.lon);
 			aLat.val(lonlatObject.lat);
-		
-			//layers[0].destroy();
 		}
 	}
 }
