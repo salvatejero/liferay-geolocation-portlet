@@ -10,5 +10,5 @@ Search content in Liferay near you
   - 
 
 
-[logo]: https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Configuration"
+[logo]: https://raw.githubusercontent.com/salvatejero/liferay-geolocation-portlet/master/screenshots/screenshot1.png "Configuration"
 
