@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!DOCTYPE hook PUBLIC "-//Liferay//DTD Hook 6.2.0//EN" "http://www.liferay.com/dtd/liferay-hook_6_2_0.dtd">
+
+<hook>
+	<portal-properties>portal.properties</portal-properties>
+	<language-properties>
+		content/Language.properties
+	</language-properties>
+	<language-properties>
+		content/Language_es.properties
+	</language-properties>
+	<language-properties>
+		content/Language_en.properties
+	</language-properties>
+	<custom-jsp-dir>/custom-jsp</custom-jsp-dir>
+	
+	<indexer-post-processor>
+    	<indexer-class-name>com.liferay.portlet.journal.model.JournalArticle</indexer-class-name>
+    	<indexer-post-processor-impl>salvatejero.liferay.hook.indexers.JournalArticleIndexerPostProcessor</indexer-post-processor-impl>
+	</indexer-post-processor>
+	
+	<indexer-post-processor>
+    	<indexer-class-name>com.liferay.portlet.documentlibrary.model.DLFileEntry</indexer-class-name>
+    	<indexer-post-processor-impl>salvatejero.liferay.hook.indexers.DLFileEntryIndexerPostProcessor</indexer-post-processor-impl>
+	</indexer-post-processor>
+	
+	<indexer-post-processor>
+    	<indexer-class-name>com.liferay.portlet.wiki.model.WikiPage</indexer-class-name>
+    	<indexer-post-processor-impl>salvatejero.liferay.hook.indexers.WikiPageIndexerPostProcessor</indexer-post-processor-impl>
+	</indexer-post-processor>
+	
+<!-- 	WikiPageIndexer -->
+</hook>

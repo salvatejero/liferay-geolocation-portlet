@@ -1,0 +1,280 @@
+<%--
+/**
+ * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
+--%>
+
+<%@page import="com.liferay.portal.model.User"%>
+<%@page import="com.liferay.portal.util.PortalUtil"%>
+<%@page import="com.liferay.portal.kernel.search.SearchContextFactory"%>
+<%@page import="com.liferay.portal.kernel.search.SearchContext"%>
+<%@page import="com.liferay.portlet.asset.service.persistence.AssetEntryQuery"%>
+<%
+
+int end = searchContainer.getEnd();
+int start = searchContainer.getStart();
+		 AssetEntryQuery a = null;
+if (!portletName.equals(PortletKeys.RELATED_ASSETS)) {
+	assetEntryQuery.setGroupIds(groupIds);
+}
+
+Boolean geolocationEnabled = GetterUtil.getBoolean(portletPreferences.getValue("geolocationEnabled", null), false);
+String storeType = PrefsPropsUtil.getString(themeDisplay.getCompanyId(), "geolocation.store.type", "session");
+String searchtype = GetterUtil.getString(portletPreferences.getValue("searchtype", null), "must");
+Double radioSearch = GetterUtil.getDouble(portletPreferences.getValue("radiosearch", null), 2.0);
+
+assetEntryQuery.setExcludeZeroViewCount(excludeZeroViewCount);
+assetEntryQuery.setOrderByCol1(orderByColumn1);
+assetEntryQuery.setOrderByCol2(orderByColumn2);
+assetEntryQuery.setOrderByType1(orderByType1);
+assetEntryQuery.setOrderByType2(orderByType2);
+SearchContext searchContext = SearchContextFactory.getInstance(request);
+if(geolocationEnabled){
+	Double lat = 0.0;
+	Double lon = 0.0;
+	if(!storeType.equals("session") && user != null){
+		lat = Double.valueOf(user.getExpandoBridge().getAttribute("MAPIT_LAT").toString());
+		lon = Double.valueOf(user.getExpandoBridge().getAttribute("MAPIT_LON").toString());
+	}else{
+		lon = (Double)request.getSession().getAttribute("APP_SHARED_longitude");
+		lat = (Double)request.getSession().getAttribute("APP_SHARED_latitude");	
+	}
+	
+	searchContext.setAttribute("MAPIT_LAT", lat);
+	searchContext.setAttribute("MAPIT_LON", lon);
+	searchContext.setAttribute("RADIOSEARCH", radioSearch);
+	searchContext.setAttribute("SEARCHTYPE", searchtype);
+}
+List<AssetEntry> results = new ArrayList<AssetEntry>();
+int total = 0;
+if (!portletName.equals(PortletKeys.RELATED_ASSETS) || (assetEntryQuery.getLinkedAssetEntryId() > 0)) {
+	if (assetVocabularyId > 0) {
+		AssetVocabulary assetVocabulary = AssetVocabularyLocalServiceUtil.getVocabulary(assetVocabularyId);
+
+		List<AssetCategory> assetCategories = AssetCategoryLocalServiceUtil.getVocabularyRootCategories(assetVocabulary.getVocabularyId(), QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+
+		assetEntryQuery.setClassNameIds(classNameIds);
+
+		for (AssetCategory assetCategory : assetCategories) {
+			assetCategory = assetCategory.toEscapedModel();
+
+			long[] oldAllCategoryIds = assetEntryQuery.getAllCategoryIds();
+
+			long[] newAllAssetCategoryIds = ArrayUtil.append(oldAllCategoryIds, assetCategory.getCategoryId());
+
+			assetEntryQuery.setAllCategoryIds(newAllAssetCategoryIds);
+
+			int groupTotal = 0;
+			
+			if (PropsValues.ASSET_PUBLISHER_SEARCH_WITH_INDEX && (assetEntryQuery.getLinkedAssetEntryId() == 0) && !portletName.equals(PortletKeys.HIGHEST_RATED_ASSETS) && !portletName.equals(PortletKeys.MOST_VIEWED_ASSETS)) {
+				
+				Hits hits = AssetUtil.search(searchContext, assetEntryQuery, start, end);
+				groupTotal = hits.getLength();
+				total += groupTotal;
+
+				results = AssetUtil.getAssetEntries(hits);
+			}
+			else {
+				groupTotal = AssetEntryServiceUtil.getEntriesCount(assetEntryQuery);
+
+				total += groupTotal;
+
+				assetEntryQuery.setEnd(end);
+				assetEntryQuery.setStart(start);
+
+				results = AssetEntryServiceUtil.getEntries(assetEntryQuery);
+			}
+
+			if (!results.isEmpty() && (start < groupTotal)) {
+				searchContainer.setResults(results);
+
+				request.setAttribute("view.jsp-results", results);
+%>
+
+				<h3 class="asset-entries-group-label"><%= assetCategory.getTitle(locale) %></h3>
+
+				<c:choose>
+					<c:when test="<%= portletDisplayDDMTemplateId > 0 %>">
+						<%= PortletDisplayTemplateUtil.renderDDMTemplate(pageContext, portletDisplayDDMTemplateId, results, contextObjects) %>
+					</c:when>
+					<c:otherwise>
+						<%@ include file="/html/portlet/asset_publisher/view_dynamic_list_asset.jspf" %>
+					</c:otherwise>
+				</c:choose>
+
+<%
+			}
+
+			if (groupTotal > 0) {
+				if ((end > 0) && (end > groupTotal)) {
+					end -= groupTotal;
+				}
+				else {
+					end = 0;
+				}
+
+				if ((start > 0) && (start > groupTotal)) {
+					start -= groupTotal;
+				}
+				else {
+					start = 0;
+				}
+			}
+
+			assetEntryQuery.setAllCategoryIds(oldAllCategoryIds);
+			assetEntryQuery.setEnd(QueryUtil.ALL_POS);
+			assetEntryQuery.setStart(QueryUtil.ALL_POS);
+		}
+
+		searchContainer.setTotal(total);
+	}
+	else if (!groupByClass) {
+		assetEntryQuery.setClassNameIds(classNameIds);
+
+		if (PropsValues.ASSET_PUBLISHER_SEARCH_WITH_INDEX && (assetEntryQuery.getLinkedAssetEntryId() == 0) && !portletName.equals(PortletKeys.HIGHEST_RATED_ASSETS) && !portletName.equals(PortletKeys.MOST_VIEWED_ASSETS)) {
+			Hits hits = AssetUtil.search(searchContext, assetEntryQuery, start, end);
+
+			total = hits.getLength();
+
+			searchContainer.setTotal(total);
+
+			results = AssetUtil.getAssetEntries(hits);
+		}
+		else {
+			total = AssetEntryServiceUtil.getEntriesCount(assetEntryQuery);
+
+			searchContainer.setTotal(total);
+
+			assetEntryQuery.setEnd(end);
+			assetEntryQuery.setStart(start);
+
+			results = AssetEntryServiceUtil.getEntries(assetEntryQuery);
+		}
+
+		searchContainer.setResults(results);
+
+		request.setAttribute("view.jsp-results", results);
+%>
+
+		<c:choose>
+			<c:when test="<%= portletDisplayDDMTemplateId > 0 %>">
+				<%= PortletDisplayTemplateUtil.renderDDMTemplate(pageContext, portletDisplayDDMTemplateId, results, contextObjects) %>
+			</c:when>
+			<c:otherwise>
+				<%@ include file="/html/portlet/asset_publisher/view_dynamic_list_asset.jspf" %>
+			</c:otherwise>
+		</c:choose>
+
+<%
+	}
+	else {
+		for (long classNameId : classNameIds) {
+			long[] oldGroupClassNameIds = assetEntryQuery.getClassNameIds();
+
+			long[] groupClassNameIds = {classNameId};
+
+			assetEntryQuery.setClassNameIds(groupClassNameIds);
+
+			String groupClassName = PortalUtil.getClassName(classNameId);
+
+			AssetRendererFactory groupAssetRendererFactory = AssetRendererFactoryRegistryUtil.getAssetRendererFactoryByClassName(groupClassName);
+
+			int groupTotal = 0;
+
+			if (PropsValues.ASSET_PUBLISHER_SEARCH_WITH_INDEX && (assetEntryQuery.getLinkedAssetEntryId() == 0) && !portletName.equals(PortletKeys.HIGHEST_RATED_ASSETS) && !portletName.equals(PortletKeys.MOST_VIEWED_ASSETS)) {
+				Hits hits = AssetUtil.search(searchContext, assetEntryQuery, start, end);
+				groupTotal = hits.getLength();
+
+				total += groupTotal;
+
+				results = AssetUtil.getAssetEntries(hits);
+			}
+			else {
+				groupTotal = AssetEntryServiceUtil.getEntriesCount(assetEntryQuery);
+
+				total += groupTotal;
+
+				assetEntryQuery.setEnd(end);
+				assetEntryQuery.setStart(start);
+
+				results = AssetEntryServiceUtil.getEntries(assetEntryQuery);
+			}
+
+			searchContainer.setResults(results);
+
+			request.setAttribute("view.jsp-results", results);
+
+			if (!results.isEmpty() && (start < groupTotal)) {
+%>
+
+				<h3 class="asset-entries-group-label"><%= ResourceActionsUtil.getModelResource(locale, groupAssetRendererFactory.getClassName()) %></h3>
+
+				<c:choose>
+					<c:when test="<%= portletDisplayDDMTemplateId > 0 %>">
+						<%= PortletDisplayTemplateUtil.renderDDMTemplate(pageContext, portletDisplayDDMTemplateId, results, contextObjects) %>
+					</c:when>
+					<c:otherwise>
+						<%@ include file="/html/portlet/asset_publisher/view_dynamic_list_asset.jspf" %>
+					</c:otherwise>
+				</c:choose>
+
+<%
+			}
+
+			if (!portletName.equals(PortletKeys.RECENT_CONTENT)) {
+				if (groupTotal > 0) {
+					if ((end > 0) && (end > groupTotal)) {
+						end -= groupTotal;
+					}
+					else {
+						end = 0;
+					}
+
+					if ((start > 0) && (start > groupTotal)) {
+						start -= groupTotal;
+					}
+					else {
+						start = 0;
+					}
+				}
+
+				assetEntryQuery.setClassNameIds(oldGroupClassNameIds);
+				assetEntryQuery.setEnd(QueryUtil.ALL_POS);
+				assetEntryQuery.setStart(QueryUtil.ALL_POS);
+			}
+		}
+
+		searchContainer.setTotal(total);
+	}
+}
+
+if ((total == 0) && (portletDisplayDDMTemplateId == 0)) {
+	if (!showPortletWithNoResults && ((addPortletURLs == null) || addPortletURLs.isEmpty()) && !((assetCategoryId > 0) || Validator.isNotNull(assetTagName))) {
+		renderRequest.setAttribute(WebKeys.PORTLET_CONFIGURATOR_VISIBILITY, Boolean.TRUE);
+	}
+%>
+
+	<div class="alert alert-info">
+		<c:choose>
+			<c:when test="<%= !portletName.equals(PortletKeys.RELATED_ASSETS) %>">
+				<liferay-ui:message key="there-are-no-results" />
+			</c:when>
+			<c:otherwise>
+				<liferay-ui:message key="there-are-no-related-assets" />
+			</c:otherwise>
+		</c:choose>
+	</div>
+
+<%
+}
+%>
